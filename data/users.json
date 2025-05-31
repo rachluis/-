@@ -1,0 +1,12 @@
+{
+    "admin1": {
+        "password": "123456",
+        "login_attempts": 0,
+        "last_attempt": null
+    },
+    "admin": {
+        "password": "123456",
+        "login_attempts": 0,
+        "last_attempt": null
+    }
+}

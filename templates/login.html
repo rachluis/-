@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能家庭能源管理系统 - 登录</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f8f9fa;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .login-container {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .login-header h1 {
+            color: #4a6fa5;
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .form-floating {
+            margin-bottom: 1rem;
+        }
+        
+        .form-control:focus {
+            border-color: #4a6fa5;
+            box-shadow: 0 0 0 0.25rem rgba(74, 111, 165, 0.25);
+        }
+        
+        .btn-primary {
+            background-color: #4a6fa5;
+            border-color: #4a6fa5;
+            width: 100%;
+            padding: 0.8rem;
+            font-size: 1.1rem;
+        }
+        
+        .btn-primary:hover {
+            background-color: #3a5a8c;
+            border-color: #3a5a8c;
+        }
+
+        .password-validation {
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .validation-icon {
+            margin-left: 0.5rem;
+        }
+
+        .validation-icon.valid {
+            color: #28a745;
+        }
+
+        .validation-icon.invalid {
+            color: #dc3545;
+        }
+
+        .alert {
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>智能家庭能源管理系统</h1>
+            <p class="text-muted">请登录以继续</p>
+        </div>
+        
+        <form id="loginForm" method="POST" action="/login">
+            <div class="form-floating">
+                <input type="text" class="form-control" id="username" name="username" placeholder="用户名" required>
+                <label for="username">用户名</label>
+            </div>
+            
+            <div class="form-floating">
+                <input type="password" class="form-control" id="password" name="password" placeholder="密码" required>
+                <label for="password">密码</label>
+                <div class="password-validation">
+                    <span id="passwordLength">密码长度：6-18位</span>
+                    <i class="bi bi-x-circle validation-icon invalid" id="lengthIcon"></i>
+                </div>
+            </div>
+            
+            <div id="errorAlert" class="alert alert-danger" style="display: none;"></div>
+            
+            <button type="submit" class="btn btn-primary" id="loginBtn">登录</button>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const passwordInput = document.getElementById('password');
+            const lengthIcon = document.getElementById('lengthIcon');
+            const loginForm = document.getElementById('loginForm');
+            const errorAlert = document.getElementById('errorAlert');
+
+            // 密码验证
+            passwordInput.addEventListener('input', function() {
+                const password = this.value;
+                const isValid = password.length >= 6 && password.length <= 18;
+                
+                // 更新图标
+                lengthIcon.className = `bi ${isValid ? 'bi-check-circle' : 'bi-x-circle'} validation-icon ${isValid ? 'valid' : 'invalid'}`;
+            });
+
+            // 表单提交验证
+            loginForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const password = passwordInput.value;
+                if (password.length < 6 || password.length > 18) {
+                    errorAlert.textContent = '密码长度必须在6-18位之间';
+                    errorAlert.style.display = 'block';
+                    return;
+                }
+
+                // 发送登录请求
+                fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: document.getElementById('username').value,
+                        password: password
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = '/dashboard';
+                    } else {
+                        errorAlert.textContent = data.message || '登录失败，请检查用户名和密码';
+                        errorAlert.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    errorAlert.textContent = '登录请求失败，请稍后重试';
+                    errorAlert.style.display = 'block';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

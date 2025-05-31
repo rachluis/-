@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能家庭能源管理系统 - 仪表板</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f8f9fa;
+        }
+        
+        .navbar {
+            background-color: #4a6fa5;
+            height: 60px;
+        }
+        
+        .navbar-brand {
+            color: white !important;
+            font-size: 1.5rem;
+        }
+        
+        .navbar-nav .nav-link {
+            color: white !important;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            height: calc(100vh - 60px);
+            width: 250px;
+            background-color: #fff;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            padding: 20px;
+            z-index: 1000;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            margin-top: 60px;
+        }
+
+        .nav-item {
+            margin-bottom: 10px;
+        }
+
+        .nav-link {
+            color: #4a6fa5;
+            padding: 10px 15px;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+
+        .nav-link:hover {
+            background-color: #f0f4f8;
+        }
+
+        .nav-link.active {
+            background-color: #4a6fa5;
+            color: white !important;
+        }
+
+        .nav-link i {
+            margin-right: 10px;
+        }
+        
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            transition: transform 0.3s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-header {
+            background-color: #72b1d8;
+            color: white;
+            font-weight: bold;
+            border-radius: 10px 10px 0 0 !important;
+        }
+        
+        .device-status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
+        
+        .device-status .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        
+        .status-on {
+            background-color: #28a745;
+        }
+        
+        .status-off {
+            background-color: #dc3545;
+        }
+        
+        .anomaly-alert {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .module-content {
+            display: none;
+        }
+
+        .module-content.active {
+            display: block;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 20px;
+        }
+
+        .table-responsive {
+            margin-top: 20px;
+        }
+
+        .btn-primary {
+            background-color: #4a6fa5;
+            border-color: #4a6fa5;
+        }
+
+        .btn-primary:hover {
+            background-color: #3a5a8c;
+            border-color: #3a5a8c;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">智能家庭能源管理系统</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="#" id="logoutBtn">
+                    <i class="bi bi-box-arrow-right"></i> 退出登录
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 侧边栏 -->
+    <div class="sidebar">
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link active" href="#" data-module="dashboard">
+                    <i class="bi bi-speedometer2"></i> 仪表板
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-module="device-ranking">
+                    <i class="bi bi-bar-chart"></i> 设备用电排行
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-module="energy-history">
+                    <i class="bi bi-clock-history"></i> 用电历史记录
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-module="recommendations">
+                    <i class="bi bi-lightbulb"></i> 节能建议
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="main-content">
+        <!-- 仪表板模块 -->
+        <div class="module-content active" id="dashboard-module">
+            <div class="row">
+                <!-- 实时监控卡片 -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">实时监控</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h3 class="mb-0" id="current-power">0 W</h3>
+                                <small class="text-muted" id="current-time">--:--:--</small>
+                            </div>
+                            <div id="anomaly-container"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 设备状态卡片 -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">设备状态</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="device-status-container"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <!-- 功率趋势图 -->
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">功率趋势</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="power-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 设备用电排行模块 -->
+        <div class="module-content" id="device-ranking-module">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">设备用电排行</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="device-ranking-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 用电历史记录模块 -->
+        <div class="module-content" id="energy-history-module">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">用电历史记录</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped" id="energyHistoryTable">
+                            <thead>
+                                <tr>
+                                    <th>日期</th>
+                                    <th>时间</th>
+                                    <th>功率 (W)</th>
+                                    <th>用电量 (kWh)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 动态加载用电历史 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex justify-content-end mt-3">
+                        <button class="btn btn-primary" id="loadMoreBtn">加载更多</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 节能建议模块 -->
+        <div class="module-content" id="recommendations-module">
+            <div class="row">
+                <!-- 能效评分卡片 -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">设备能效评分</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="efficiency-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 使用模式分析卡片 -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">使用模式分析</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="patterns-container"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <!-- 异常检测卡片 -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">异常检测</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="anomalies-container"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 节能建议卡片 -->
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">节能建议</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="recommendations-container"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化图表
+            let powerChart;
+            let deviceRankingChart;
+            let efficiencyChart;
+            
+            // 初始化实时监控图表
+            const ctxPowerChart = document.getElementById('power-chart').getContext('2d');
+            powerChart = new Chart(ctxPowerChart, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '总功率 (W)',
+                        data: [],
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // 初始化设备用电排行图表
+            const ctxDeviceRanking = document.getElementById('device-ranking-chart').getContext('2d');
+            deviceRankingChart = new Chart(ctxDeviceRanking, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '平均功率 (W)',
+                        data: [],
+                        backgroundColor: 'rgba(75, 192, 192, 0.5)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // 初始化能效评分图表
+            const ctxEfficiency = document.getElementById('efficiency-chart').getContext('2d');
+            efficiencyChart = new Chart(ctxEfficiency, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '能效评分',
+                        data: [],
+                        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                        borderColor: 'rgb(75, 192, 192)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: '分数'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 模块切换功能
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // 更新导航链接状态
+                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // 更新模块显示状态
+                    const moduleId = this.getAttribute('data-module');
+                    document.querySelectorAll('.module-content').forEach(m => m.classList.remove('active'));
+                    document.getElementById(`${moduleId}-module`).classList.add('active');
+                });
+            });
+
+            // 更新实时数据
+            function updateRealTimeData() {
+                fetch('/api/real-time-data')
+                    .then(response => response.json())
+                    .then(data => {
+                        // 更新当前功率和时间
+                        document.getElementById('current-power').textContent = `${data.power.toFixed(1)} W`;
+                        document.getElementById('current-time').textContent = data.time.split(' ')[1];
+
+                        // 更新功率图表
+                        powerChart.data.labels.push(data.time.split(' ')[1]);
+                        powerChart.data.datasets[0].data.push(data.power);
+                        if (powerChart.data.labels.length > 20) {
+                            powerChart.data.labels.shift();
+                            powerChart.data.datasets[0].data.shift();
+                        }
+                        powerChart.update();
+
+                        // 显示异常信息
+                        const anomalyContainer = document.getElementById('anomaly-container');
+                        anomalyContainer.innerHTML = '';
+                        if (data.anomalies && data.anomalies.length > 0) {
+                            data.anomalies.forEach(anomaly => {
+                                const alert = document.createElement('div');
+                                alert.className = 'alert alert-danger anomaly-alert';
+                                alert.textContent = anomaly.message;
+                                anomalyContainer.appendChild(alert);
+                            });
+                        }
+                    });
+            }
+
+            // 更新设备状态
+            function updateDeviceStatus() {
+                fetch('/api/device-status')
+                    .then(response => response.json())
+                    .then(devices => {
+                        const container = document.getElementById('device-status-container');
+                        container.innerHTML = '';
+                        devices.forEach(device => {
+                            const deviceDiv = document.createElement('div');
+                            deviceDiv.className = 'device-status';
+                            deviceDiv.innerHTML = `
+                                <div class="status-indicator ${device.status === 'on' ? 'status-on' : 'status-off'}"></div>
+                                <div>
+                                    <strong>${device.name}</strong>
+                                    <div class="text-muted">${device.power.toFixed(1)} W</div>
+                                </div>
+                            `;
+                            container.appendChild(deviceDiv);
+                        });
+                    });
+            }
+
+            // 更新设备排行
+            function updateDeviceRanking() {
+                fetch('/api/top-devices')
+                    .then(response => response.json())
+                    .then(data => {
+                        deviceRankingChart.data.labels = data.labels;
+                        deviceRankingChart.data.datasets[0].data = data.data;
+                        deviceRankingChart.update();
+                    });
+            }
+
+            // 更新设备分析数据
+            function updateDeviceAnalysis() {
+                fetch('/api/device-analysis')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            const results = data.data;
+                            
+                            // 更新能效评分图表
+                            const devices = Object.keys(results);
+                            const scores = devices.map(device => results[device].efficiency_score);
+                            
+                            efficiencyChart.data.labels = devices;
+                            efficiencyChart.data.datasets[0].data = scores;
+                            efficiencyChart.update();
+
+                            // 更新使用模式分析
+                            const patternsContainer = document.getElementById('patterns-container');
+                            patternsContainer.innerHTML = '';
+                            devices.forEach(device => {
+                                const patterns = results[device].patterns;
+                                if (patterns.length > 0) {
+                                    const deviceDiv = document.createElement('div');
+                                    deviceDiv.className = 'mb-3';
+                                    deviceDiv.innerHTML = `
+                                        <h6 class="mb-2">${device}</h6>
+                                        <ul class="list-unstyled">
+                                            ${patterns.map(pattern => `<li>${pattern}</li>`).join('')}
+                                        </ul>
+                                    `;
+                                    patternsContainer.appendChild(deviceDiv);
+                                }
+                            });
+                            
+                            // 更新异常检测
+                            const anomaliesContainer = document.getElementById('anomalies-container');
+                            anomaliesContainer.innerHTML = '';
+                            devices.forEach(device => {
+                                const anomalies = results[device].anomalies;
+                                if (anomalies.length > 0) {
+                                    const deviceDiv = document.createElement('div');
+                                    deviceDiv.className = 'mb-3';
+                                    deviceDiv.innerHTML = `
+                                        <h6 class="mb-2">${device}</h6>
+                                        <ul class="list-unstyled">
+                                            ${anomalies.map(anomaly => `<li class="text-danger">${anomaly.message}</li>`).join('')}
+                                        </ul>
+                                    `;
+                                    anomaliesContainer.appendChild(deviceDiv);
+                                }
+                            });
+                            
+                            // 更新节能建议
+                            const recommendationsContainer = document.getElementById('recommendations-container');
+                            recommendationsContainer.innerHTML = '';
+                            devices.forEach(device => {
+                                const recommendations = results[device].recommendations;
+                                if (recommendations.length > 0) {
+                                    const deviceDiv = document.createElement('div');
+                                    deviceDiv.className = 'mb-3';
+                                    deviceDiv.innerHTML = `
+                                        <h6 class="mb-2">${device}</h6>
+                                        <ul class="list-unstyled">
+                                            ${recommendations.map(rec => `<li class="text-info">${rec}</li>`).join('')}
+                                        </ul>
+                                    `;
+                                    recommendationsContainer.appendChild(deviceDiv);
+                                }
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('获取设备分析数据失败:', error);
+                    });
+            }
+
+            // 定期更新数据
+            setInterval(updateRealTimeData, 5000);  // 每5秒更新一次实时数据
+            setInterval(updateDeviceStatus, 10000);  // 每10秒更新一次设备状态
+            setInterval(updateDeviceRanking, 30000);  // 每30秒更新一次设备排行
+            setInterval(updateDeviceAnalysis, 60000);  // 每分钟更新一次设备分析
+
+            // 初始加载
+            updateRealTimeData();
+            updateDeviceStatus();
+            updateDeviceRanking();
+            updateDeviceAnalysis();
+
+            // 加载更多历史记录
+            document.getElementById('loadMoreBtn').addEventListener('click', function() {
+                fetch('/api/historical-data')
+                    .then(response => response.json())
+                    .then(data => {
+                        const tableBody = document.querySelector('#energyHistoryTable tbody');
+                        data.forEach(record => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${record.date}</td>
+                                <td>${record.time}</td>
+                                <td>${record.power.toFixed(1)} W</td>
+                                <td>${record.energy.toFixed(2)} kWh</td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
+                    });
+            });
+
+            // 退出登录
+            document.getElementById('logoutBtn').addEventListener('click', function(e) {
+                e.preventDefault();
+                if (confirm('确定要退出登录吗？')) {
+                    window.location.href = '/logout';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+
+{% block title %}用户交互 - 能源管理系统{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- 搜索框 -->
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">智能查询</h5>
+                    <div class="input-group">
+                        <input type="text" id="searchInput" class="form-control" placeholder="输入查询内容，例如：查看今日用电情况">
+                        <button class="btn btn-primary" type="button" id="searchBtn">
+                            <i class="bi bi-search"></i> 搜索
+                        </button>
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-muted">常用查询：</small>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-secondary" onclick="searchQuery('查看今日用电情况')">今日用电</button>
+                            <button class="btn btn-outline-secondary" onclick="searchQuery('查询节能建议')">节能建议</button>
+                            <button class="btn btn-outline-secondary" onclick="searchQuery('查看设备使用情况')">设备使用</button>
+                            <button class="btn btn-outline-secondary" onclick="searchQuery('查看用电趋势')">用电趋势</button>
+                            <button class="btn btn-outline-secondary" onclick="searchQuery('查看异常记录')">异常记录</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 搜索结果 -->
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">查询结果</h5>
+                    <div id="searchResults" class="list-group">
+                        <!-- 搜索结果将在这里动态显示 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 通知中心 -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">通知中心</h5>
+                    <div id="notifications" class="list-group">
+                        <!-- 通知将在这里动态显示 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 报告中心 -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">报告中心</h5>
+                    <div class="mb-3">
+                        <button class="btn btn-outline-primary btn-sm" onclick="generateReport('daily')">
+                            <i class="bi bi-file-earmark-text"></i> 生成每日报告
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="generateReport('weekly')">
+                            <i class="bi bi-file-earmark-text"></i> 生成每周报告
+                        </button>
+                    </div>
+                    <div id="reports" class="list-group">
+                        <!-- 报告将在这里动态显示 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图表展示 -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">功率趋势</h5>
+                    <canvas id="powerTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">设备使用时长</h5>
+                    <canvas id="deviceUsageChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// 图表实例
+let powerTrendChart = null;
+let deviceUsageChart = null;
+
+// 初始化图表
+function initCharts() {
+    // 功率趋势图表
+    const powerTrendCtx = document.getElementById('powerTrendChart').getContext('2d');
+    powerTrendChart = new Chart(powerTrendCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: '总功率 (W)',
+                data: [],
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // 设备使用时长图表
+    const deviceUsageCtx = document.getElementById('deviceUsageChart').getContext('2d');
+    deviceUsageChart = new Chart(deviceUsageCtx, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: '使用时长 (小时)',
+                data: [],
+                backgroundColor: 'rgba(54, 162, 235, 0.5)'
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// 更新图表数据
+function updateCharts() {
+    fetch('/api/chart-data')
+        .then(response => response.json())
+        .then(data => {
+            // 更新功率趋势图表
+            powerTrendChart.data.labels = data.powerTrend.labels;
+            powerTrendChart.data.datasets[0].data = data.powerTrend.data;
+            powerTrendChart.update();
+
+            // 更新设备使用时长图表
+            deviceUsageChart.data.labels = data.deviceUsage.labels;
+            deviceUsageChart.data.datasets[0].data = data.deviceUsage.data;
+            deviceUsageChart.update();
+        })
+        .catch(error => console.error('获取图表数据失败:', error));
+}
+
+// 搜索查询
+function searchQuery(query) {
+    document.getElementById('searchInput').value = query;
+    document.getElementById('searchBtn').click();
+}
+
+// 处理搜索
+document.getElementById('searchBtn').addEventListener('click', function() {
+    const query = document.getElementById('searchInput').value;
+    if (!query) return;
+
+    fetch('/api/search', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ query })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const resultsContainer = document.getElementById('searchResults');
+        resultsContainer.innerHTML = '';
+        
+        if (data.success) {
+            data.results.forEach(result => {
+                const item = document.createElement('div');
+                item.className = 'list-group-item';
+                item.textContent = result;
+                resultsContainer.appendChild(item);
+            });
+        } else {
+            const item = document.createElement('div');
+            item.className = 'list-group-item text-danger';
+            item.textContent = data.message;
+            resultsContainer.appendChild(item);
+        }
+    })
+    .catch(error => {
+        console.error('搜索失败:', error);
+        const resultsContainer = document.getElementById('searchResults');
+        resultsContainer.innerHTML = '<div class="list-group-item text-danger">搜索失败，请稍后重试</div>';
+    });
+});
+
+// 更新通知
+function updateNotifications() {
+    fetch('/api/notifications')
+        .then(response => response.json())
+        .then(notifications => {
+            const container = document.getElementById('notifications');
+            container.innerHTML = '';
+            
+            notifications.forEach(notification => {
+                const item = document.createElement('div');
+                item.className = `list-group-item ${notification.unread ? 'list-group-item-primary' : ''}`;
+                item.innerHTML = `
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">${notification.title}</h6>
+                        <small>${notification.time}</small>
+                    </div>
+                    <p class="mb-1">${notification.message}</p>
+                `;
+                container.appendChild(item);
+            });
+        })
+        .catch(error => console.error('获取通知失败:', error));
+}
+
+// 生成报告
+function generateReport(type) {
+    fetch('/api/search', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ query: `生成${type === 'daily' ? '每日' : '每周'}用电报告` })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateReports();
+        }
+    })
+    .catch(error => console.error('生成报告失败:', error));
+}
+
+// 更新报告
+function updateReports() {
+    fetch('/api/reports')
+        .then(response => response.json())
+        .then(reports => {
+            const container = document.getElementById('reports');
+            container.innerHTML = '';
+            
+            reports.forEach(report => {
+                const item = document.createElement('div');
+                item.className = 'list-group-item';
+                item.innerHTML = `
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">${report.title}</h6>
+                        <small>${report.time}</small>
+                    </div>
+                    <p class="mb-1">${report.content}</p>
+                `;
+                container.appendChild(item);
+            });
+        })
+        .catch(error => console.error('获取报告失败:', error));
+}
+
+// 初始化
+document.addEventListener('DOMContentLoaded', function() {
+    initCharts();
+    updateCharts();
+    updateNotifications();
+    updateReports();
+
+    // 定期更新数据
+    setInterval(updateCharts, 60000);  // 每分钟更新图表
+    setInterval(updateNotifications, 30000);  // 每30秒更新通知
+    setInterval(updateReports, 60000);  // 每分钟更新报告
+});
+</script>
+{% endblock %} 
